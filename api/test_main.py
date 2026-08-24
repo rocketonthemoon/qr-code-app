@@ -4,6 +4,15 @@ from unittest.mock import patch
 
 client = TestClient(app)
 
+def test_health_check():
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json() == {"status": "healthy"}
+
+    response_z = client.get("/healthz")
+    assert response_z.status_code == 200
+    assert response_z.json() == {"status": "healthy"}
+
 @patch("main.s3.put_object")
 @patch("main.s3.generate_presigned_url")
 def test_generate_qr(mock_presigned_url, mock_put_object):
