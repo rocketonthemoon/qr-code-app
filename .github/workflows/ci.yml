@@ -13,7 +13,6 @@ concurrency:
 permissions:
   contents: read
   packages: write
-  security-events: write
 
 env:
   REGISTRY: ghcr.io
@@ -39,13 +38,6 @@ jobs:
           output: 'trivy-sast-results.sarif'
           exit-code: '1'
           severity: 'CRITICAL,HIGH'
-
-      - name: Upload SAST SARIF to GitHub Security Tab
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: 'trivy-sast-results.sarif'
-          category: 'sast-scan'
 
       - name: Render Trivy SAST Report to Summary
         uses: b-zurg/sarif-to-markdown@v1
@@ -122,13 +114,6 @@ jobs:
           output: 'trivy-api-results.sarif'
           exit-code: '1'
           severity: 'CRITICAL,HIGH'
-
-      - name: Upload API Container SARIF to GitHub Security Tab
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: 'trivy-api-results.sarif'
-          category: 'api-container'
 
       - name: Render Trivy API SARIF report to Summary
         uses: b-zurg/sarif-to-markdown@v1
@@ -214,13 +199,6 @@ jobs:
           output: 'trivy-frontend-results.sarif'
           exit-code: '1'
           severity: 'CRITICAL,HIGH'
-
-      - name: Upload Frontend Container SARIF to GitHub Security Tab
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: 'trivy-frontend-results.sarif'
-          category: 'frontend-container'
 
       - name: Render Trivy Frontend SARIF report to Summary
         uses: b-zurg/sarif-to-markdown@v1
