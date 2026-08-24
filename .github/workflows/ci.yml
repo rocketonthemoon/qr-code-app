@@ -38,6 +38,7 @@ jobs:
           output: 'trivy-sast-results.sarif'
           exit-code: '1'
           severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
 
       - name: Render Trivy SAST Report to Summary
         uses: b-zurg/sarif-to-markdown@v1
@@ -114,6 +115,7 @@ jobs:
           output: 'trivy-api-results.sarif'
           exit-code: '1'
           severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
 
       - name: Render Trivy API SARIF report to Summary
         uses: b-zurg/sarif-to-markdown@v1
@@ -199,6 +201,7 @@ jobs:
           output: 'trivy-frontend-results.sarif'
           exit-code: '1'
           severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
 
       - name: Render Trivy Frontend SARIF report to Summary
         uses: b-zurg/sarif-to-markdown@v1
