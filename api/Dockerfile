@@ -14,10 +14,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . /app/
 
 # 3. Create non-root system user and set permissions
-RUN useradd -r -s /bin/false app-runner && \
-    chown -R app-runner:app-runner /app
+RUN useradd -r -s /bin/false pythonuser && \
+    chown -R pythonuser:pythonuser /app
 
-USER app-runner
+USER pythonuser
 
 EXPOSE 8000
 
