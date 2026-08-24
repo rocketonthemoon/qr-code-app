@@ -6,9 +6,14 @@ on:
   pull_request:
     branches: [ main, master ]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   packages: write
+  security-events: write
 
 env:
   REGISTRY: ghcr.io
@@ -20,7 +25,6 @@ jobs:
   sast-scan:
     name: SAST Code Scan (Trivy)
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -33,17 +37,24 @@ jobs:
           scanners: 'vuln,secret,config'
           format: 'sarif'
           output: 'trivy-sast-results.sarif'
-          exit-code: '0'
+          exit-code: '1'
           severity: 'CRITICAL,HIGH'
 
-      - name: Render Trivy SAST SARIF report to GitHub Actions Summary
+      - name: Upload SAST SARIF to GitHub Security Tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-sast-results.sarif'
+          category: 'sast-scan'
+
+      - name: Render Trivy SAST Report to Summary
         uses: b-zurg/sarif-to-markdown@v1
         if: always()
         with:
           file-path: 'trivy-sast-results.sarif'
           add-job-summary: true
 
-      - name: Archive Trivy SAST SARIF report artifact
+      - name: Archive Trivy SAST SARIF artifact
         uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -56,7 +67,6 @@ jobs:
   api-ci:
     name: Backend API CI & Publish
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -86,7 +96,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GIT_HUB_TOKEN }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract Docker metadata for API
         id: meta
@@ -97,37 +107,51 @@ jobs:
             type=raw,value=latest
             type=sha,format=short
 
-      - name: Build and Push API Docker Image
+      - name: Build local API image for security scanning
         uses: docker/build-push-action@v5
         with:
           context: ./api
           load: true
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: api-local-scan:target
 
-      - name: Run Trivy image scanner (API)
+      - name: Run Trivy container scanner (API)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ github.repository }}/api:latest
+          image-ref: 'api-local-scan:target'
           format: 'sarif'
           output: 'trivy-api-results.sarif'
-          exit-code: '0'
+          exit-code: '1'
           severity: 'CRITICAL,HIGH'
 
-      - name: Render Trivy API SARIF report to GitHub Actions Summary
+      - name: Upload API Container SARIF to GitHub Security Tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-api-results.sarif'
+          category: 'api-container'
+
+      - name: Render Trivy API SARIF report to Summary
         uses: b-zurg/sarif-to-markdown@v1
         if: always()
         with:
           file-path: 'trivy-api-results.sarif'
           add-job-summary: true
 
-      - name: Archive Trivy API SARIF report artifact
+      - name: Archive Trivy API SARIF artifact
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: trivy-api-report
           path: trivy-api-results.sarif
+
+      - name: Push API Docker Image to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./api
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
 
   # --------------------------------------------------
   # Frontend CI (Next.js / Node.js)
@@ -135,7 +159,6 @@ jobs:
   frontend-ci:
     name: Frontend Next.js CI & Publish
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -165,7 +188,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GIT_HUB_TOKEN }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract Docker metadata for Frontend
         id: meta
@@ -176,34 +199,48 @@ jobs:
             type=raw,value=latest
             type=sha,format=short
 
-      - name: Build and Push Frontend Docker Image
+      - name: Build local Frontend image for security scanning
         uses: docker/build-push-action@v5
         with:
           context: ./front-end-nextjs
           load: true
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: frontend-local-scan:target
 
-      - name: Run Trivy image scanner (Frontend)
+      - name: Run Trivy container scanner (Frontend)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ github.repository }}/frontend:latest
+          image-ref: 'frontend-local-scan:target'
           format: 'sarif'
           output: 'trivy-frontend-results.sarif'
-          exit-code: '0'
+          exit-code: '1'
           severity: 'CRITICAL,HIGH'
 
-      - name: Render Trivy Frontend SARIF report to GitHub Actions Summary
+      - name: Upload Frontend Container SARIF to GitHub Security Tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-frontend-results.sarif'
+          category: 'frontend-container'
+
+      - name: Render Trivy Frontend SARIF report to Summary
         uses: b-zurg/sarif-to-markdown@v1
         if: always()
         with:
           file-path: 'trivy-frontend-results.sarif'
           add-job-summary: true
 
-      - name: Archive Trivy Frontend SARIF report artifact
+      - name: Archive Trivy Frontend SARIF artifact
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: trivy-frontend-report
           path: trivy-frontend-results.sarif
+
+      - name: Push Frontend Docker Image to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./front-end-nextjs
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
