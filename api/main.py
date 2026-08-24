@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, status
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import qrcode
 import boto3
@@ -32,10 +33,9 @@ s3 = boto3.client(
 
 bucket_name = os.getenv('BUCKET_NAME')
 
-@app.get("/health")
+@app.get("/health", status_code=status.HTTP_200_OK, tags=["Health"])
 async def health_check():
-    """Docker health check endpoint."""
-    return {"status": "healthy"}
+    return {"status": "ok"}
 
 @app.post("/generate-qr/")
 async def generate_qr(url: str):
