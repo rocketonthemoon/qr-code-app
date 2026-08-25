@@ -12,8 +12,8 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-# Ensure pip itself is up-to-date
-RUN pip install --no-cache-dir --upgrade pip
+# Ensure pip and setuptools are upgraded to patch pre-installed base image vulnerabilities
+RUN pip install --no-cache-dir --upgrade pip "setuptools>=83.0.0"
 
 # Copy requirements first for Docker layer caching
 COPY requirements.txt /app/
