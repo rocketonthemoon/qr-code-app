@@ -1,42 +1,27 @@
-# ---------------------------------------------------
-# Stage 1: Build & Dependency Installation
-# ---------------------------------------------------
-# Debian 12 distroless uses Python 3.11, so builder must match 3.11 for C-extension ABI compatibility
-FROM python:3.11-slim AS builder
+FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Upgrade pip and install dependencies into a standalone prefix
-RUN pip install --no-cache-dir --upgrade pip
+# Patch all OS packages at build time
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get autoremove -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir --upgrade pip "setuptools>=83.0.0"
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-# ---------------------------------------------------
-# Stage 2: Distroless Runtime
-# ---------------------------------------------------
-FROM gcr.io/distroless/python3-debian12:nonroot AS runner
+COPY . .
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/usr/local/lib/python3.11/site-packages:/app
-
-WORKDIR /app
-
-# Copy installed dependencies and binaries
-COPY --from=builder /install /usr/local
-
-# Copy application source (includes healthcheck.py)
-COPY . /app
+RUN useradd -r -s /bin/false appuser && chown -R appuser:appuser /app
+USER appuser
 
 EXPOSE 8000
 
-# Exec format healthcheck (distroless has no shell /bin/sh)
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD ["/usr/bin/python3", "/app/healthcheck.py"]
-
-# Run uvicorn as a module using exec form
-ENTRYPOINT ["/usr/bin/python3", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
