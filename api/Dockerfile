@@ -1,36 +1,44 @@
-FROM python:3.12-slim
+# ---------------------------------------------------
+# Stage 1: Build & Dependency Installation
+# ---------------------------------------------------
+FROM python:3.12-slim AS builder
 
-# Prevent Python from writing bytecode (.pyc) and buffer stdout/stderr
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-# Update base OS packages to pull security patches
-RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+
+# Upgrade pip/setuptools and install dependencies into a standalone prefix
+RUN pip install --no-cache-dir --upgrade pip
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+# ---------------------------------------------------
+# Stage 2: Distroless Runtime
+# ---------------------------------------------------
+FROM gcr.io/distroless/python3-debian12:nonroot AS runner
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/usr/local/lib/python3.12/site-packages:/app
 
 WORKDIR /app
 
-# Ensure pip and setuptools are upgraded to patch pre-installed base image vulnerabilities
-RUN pip install --no-cache-dir --upgrade pip "setuptools>=83.0.0"
+# Copy installed dependencies and binaries
+COPY --from=builder /install /usr/local
 
-# Copy requirements first for Docker layer caching
-COPY requirements.txt /app/
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy application source
+COPY . /app
 
-# Copy application code
-COPY . /app/
-
-# Create non-root system user and set permissions
-RUN useradd -r -s /bin/false pythonuser && \
-    chown -R pythonuser:pythonuser /app
-
-USER pythonuser
+# Copy a dedicated healthcheck script
+COPY healthcheck.py /app/healthcheck.py
 
 EXPOSE 8000
 
+# Exec format healthcheck (distroless has no shell /bin/sh)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/docs')" || exit 1
+  CMD ["/usr/bin/python3", "/app/healthcheck.py"]
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run uvicorn as a module using exec form
+ENTRYPOINT ["/usr/bin/python3", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -11,29 +11,27 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
 
-# 3. Runner stage (Production)
-FROM node:24-alpine AS runner
+# 3. Runner stage (Distroless Node.js)
+FROM gcr.io/distroless/nodejs22-debian12:nonroot AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Create non-root user
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
+# Copy static assets and Next.js standalone build artifacts
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 
-# Copy assets and build artifacts with proper ownership
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
-COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
-
-USER nextjs
+# Copy healthcheck script
+COPY --from=builder /app/healthcheck.js ./healthcheck.js
 
 EXPOSE 3000
 
+# Exec format healthcheck using the absolute distroless Node path
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+  CMD ["/nodejs/bin/node", "healthcheck.js"]
 
-CMD ["npm", "start"]
+# Start the standalone Next.js server
+CMD ["server.js"]
