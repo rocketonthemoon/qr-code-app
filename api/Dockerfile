@@ -1,14 +1,15 @@
 # ---------------------------------------------------
 # Stage 1: Build & Dependency Installation
 # ---------------------------------------------------
-FROM python:3.12-slim AS builder
+# Debian 12 distroless uses Python 3.11, so builder must match 3.11 for C-extension ABI compatibility
+FROM python:3.11-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Upgrade pip/setuptools and install dependencies into a standalone prefix
+# Upgrade pip and install dependencies into a standalone prefix
 RUN pip install --no-cache-dir --upgrade pip
 
 COPY requirements.txt .
@@ -21,18 +22,15 @@ FROM gcr.io/distroless/python3-debian12:nonroot AS runner
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/usr/local/lib/python3.12/site-packages:/app
+    PYTHONPATH=/usr/local/lib/python3.11/site-packages:/app
 
 WORKDIR /app
 
 # Copy installed dependencies and binaries
 COPY --from=builder /install /usr/local
 
-# Copy application source
+# Copy application source (includes healthcheck.py)
 COPY . /app
-
-# Copy a dedicated healthcheck script
-COPY healthcheck.py /app/healthcheck.py
 
 EXPOSE 8000
 
