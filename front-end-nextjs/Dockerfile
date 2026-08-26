@@ -24,9 +24,15 @@ RUN npm run build
 FROM node:22-alpine AS runner
 WORKDIR /app
 
-# Upgrade all base OS packages to patch any Alpine CVEs
+# Upgrade base OS packages, then remove bundled npm/yarn to clear CVEs
 RUN apk update && \
-  apk upgrade --no-cache
+  apk upgrade --no-cache && \
+  rm -rf /usr/local/lib/node_modules/npm \
+  /usr/local/bin/npm \
+  /usr/local/bin/npx \
+  /opt/yarn* \
+  /usr/local/bin/yarn \
+  /usr/local/bin/yarnpkg
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
