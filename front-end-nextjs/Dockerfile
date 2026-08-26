@@ -34,13 +34,14 @@ ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
 # Create a dedicated non-root user and group
-RUN useradd -r -s /bin/false appuser && chown -R appuser:appuser /app
+RUN addgroup --system --gid 1001 appuser && \
+  adduser --system --uid 1001 appuser
 
 # Copy standalone build artifacts with proper ownership
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/healthcheck.js ./healthcheck.js
+COPY --from=builder --chown=appuser:appuser /app/public ./public
+COPY --from=builder --chown=appuser:appuser /app/.next/standalone ./
+COPY --from=builder --chown=appuser:appuser /app/.next/static ./.next/static
+COPY --from=builder --chown=appuser:appuser /app/healthcheck.js ./healthcheck.js
 
 # Switch to the non-root user
 USER appuser
