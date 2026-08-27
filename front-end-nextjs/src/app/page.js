@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import axios from 'axios';
+import Image from 'next/image';
 
 export default function Home() {
   const [url, setUrl] = useState('');
@@ -30,7 +31,16 @@ export default function Home() {
         />
         <button type="submit" style={styles.button}>Generate QR Code</button>
       </form>
-      {qrCodeUrl && <img src={qrCodeUrl} alt="QR Code" style={styles.qrCode} />}
+      {qrCodeUrl && (
+        <Image
+          src={qrCodeUrl}
+          alt="QR Code"
+          width={200}
+          height={200}
+          unoptimized
+          style={styles.qrCode}
+        />
+      )}
     </div>
   );
 }
