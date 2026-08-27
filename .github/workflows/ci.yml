@@ -100,17 +100,22 @@ jobs:
             type=raw,value=latest
             type=sha,format=short
 
-      - name: Build local API image for security scanning
+      # Single Build: builds native amd64 and loads directly into daemon
+      - name: Build API Docker Image
         uses: docker/build-push-action@v5
         with:
           context: ./api
           load: true
-          tags: api-local-scan:target
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
 
+      # Scan the local image tag that was just loaded
       - name: Run Trivy container scanner (API)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: 'api-local-scan:target'
+          image-ref: ${{ env.REGISTRY }}/${{ github.repository }}/api:latest
           format: 'sarif'
           output: 'trivy-api-results.sarif'
           exit-code: '1'
@@ -131,14 +136,11 @@ jobs:
           name: trivy-api-report
           path: trivy-api-results.sarif
 
+      # Push directly to GHCR using docker CLI without rebuilding
       - name: Push API Docker Image to GHCR
         if: github.event_name != 'pull_request'
-        uses: docker/build-push-action@v5
-        with:
-          context: ./api
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+        run: |
+          docker push --all-tags ${{ env.REGISTRY }}/${{ github.repository }}/api
 
   # --------------------------------------------------
   # Frontend CI (Next.js / Node.js)
@@ -157,15 +159,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: 'front-end-nextjs/package-lock.json'
 
-      - name: Install dependencies
+      - name: Install dependencies & run linter
         run: |
           cd front-end-nextjs
           npm ci
-
-      - name: Build Next.js app
-        run: |
-          cd front-end-nextjs
-          npm run build
+          npm run lint
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -186,17 +184,22 @@ jobs:
             type=raw,value=latest
             type=sha,format=short
 
-      - name: Build local Frontend image for security scanning
+      # Single Build: builds native amd64 and loads directly into daemon
+      - name: Build Frontend Docker Image
         uses: docker/build-push-action@v5
         with:
           context: ./front-end-nextjs
           load: true
-          tags: frontend-local-scan:target
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
 
+      # Scan the local image tag that was just loaded
       - name: Run Trivy container scanner (Frontend)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: 'frontend-local-scan:target'
+          image-ref: ${{ env.REGISTRY }}/${{ github.repository }}/frontend:latest
           format: 'sarif'
           output: 'trivy-frontend-results.sarif'
           exit-code: '1'
@@ -217,11 +220,8 @@ jobs:
           name: trivy-frontend-report
           path: trivy-frontend-results.sarif
 
+      # Push directly to GHCR using docker CLI without rebuilding
       - name: Push Frontend Docker Image to GHCR
         if: github.event_name != 'pull_request'
-        uses: docker/build-push-action@v5
-        with:
-          context: ./front-end-nextjs
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+        run: |
+          docker push --all-tags ${{ env.REGISTRY }}/${{ github.repository }}/frontend
