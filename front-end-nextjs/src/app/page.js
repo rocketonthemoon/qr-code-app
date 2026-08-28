@@ -4,7 +4,7 @@ import { useState } from 'react';
 import axios from 'axios';
 import Image from 'next/image';
 
-const API_BASE_URL = process.env.NEXT_PRIVATE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PRIVATE_API_URL || '';
 
 export default function Home() {
   const [url, setUrl] = useState('');
