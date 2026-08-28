@@ -25,11 +25,16 @@ app.add_middleware(
 )
 
 # AWS S3 Configuration
-s3 = boto3.client(
-    's3',
-    region_name= os.getenv("AWS_REGION"),
-    aws_access_key_id= os.getenv("AWS_ACCESS_KEY"),
-    aws_secret_access_key= os.getenv("AWS_SECRET_KEY"))
+aws_region = os.getenv("AWS_REGION", "eu-north-1")
+aws_access_key = os.getenv("AWS_ACCESS_KEY")
+aws_secret_key = os.getenv("AWS_SECRET_KEY")
+
+s3_kwargs = {"region_name": aws_region}
+if aws_access_key and aws_secret_key:
+    s3_kwargs["aws_access_key_id"] = aws_access_key
+    s3_kwargs["aws_secret_access_key"] = aws_secret_key
+
+s3 = boto3.client('s3', **s3_kwargs)
 
 bucket_name = os.getenv('BUCKET_NAME')
 
