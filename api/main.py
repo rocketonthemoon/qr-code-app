@@ -33,11 +33,11 @@ s3 = boto3.client(
 
 bucket_name = os.getenv('BUCKET_NAME')
 
-@app.get("/health", status_code=status.HTTP_200_OK, tags=["Health"])
+@app.get("/api/health", status_code=status.HTTP_200_OK, tags=["Health"])
 async def health_check():
     return {"status": "ok"}
 
-@app.post("/generate-qr/")
+@app.post("/api/generate-qr/")
 async def generate_qr(url: str):
     # Generate QR Code
     qr = qrcode.QRCode(

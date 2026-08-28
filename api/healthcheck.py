@@ -2,7 +2,7 @@ import sys
 import urllib.request
 
 try:
-    with urllib.request.urlopen("http://127.0.0.1:8000/health", timeout=3) as resp:
+    with urllib.request.urlopen("http://127.0.0.1:8000/api/health", timeout=3) as resp:
         if resp.status == 200:
             sys.exit(0)
         sys.exit(1)
