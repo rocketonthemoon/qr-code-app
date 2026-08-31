@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import qrcode
 import boto3
+from botocore.config import Config
 import os
 from io import BytesIO
 
@@ -29,7 +30,13 @@ aws_region = os.getenv("AWS_REGION", "eu-north-1")
 aws_access_key = os.getenv("AWS_ACCESS_KEY")
 aws_secret_key = os.getenv("AWS_SECRET_KEY")
 
-s3_kwargs = {"region_name": aws_region}
+s3_kwargs = {
+    "region_name": aws_region,
+    "config": Config(
+        signature_version="s3v4",
+        s3={"addressing_style": "virtual"}
+    )
+}
 if aws_access_key and aws_secret_key:
     s3_kwargs["aws_access_key_id"] = aws_access_key
     s3_kwargs["aws_secret_access_key"] = aws_secret_key
