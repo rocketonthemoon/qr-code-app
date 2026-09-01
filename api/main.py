@@ -6,6 +6,7 @@ import boto3
 from botocore.config import Config
 import os
 from io import BytesIO
+import hashlib
 
 # Loading Environment variable (AWS Access Key and Secret Key)
 from dotenv import load_dotenv
@@ -69,7 +70,8 @@ async def generate_qr(url: str):
     img_byte_arr.seek(0)
 
     # Generate file name for S3
-    file_name = f"qr_codes/{url.split('//')[-1]}.png"
+    url_hash = hashlib.md5(url.encode()).hexdigest()
+    file_name = f"qr_codes/{url_hash}.png"
 
     try:
         # Upload to S3
