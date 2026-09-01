@@ -11,7 +11,7 @@ export async function POST(request) {
             return NextResponse.json({ error: 'URL query parameter is required' }, { status: 400 });
         }
 
-        // INTERNAL_API_URL is populated on the server side (e.g. http://api:8000 via Service Connect)
+        // INTERNAL_API_URL is populated on the server side (e.g. http://[FQDN of api in service connect namespace]:8000)
         const backendUrl = process.env.INTERNAL_API_URL || 'http://localhost:8000';
 
         const response = await axios.post(`${backendUrl}/api/generate-qr/?url=${encodeURIComponent(targetUrl)}`);
